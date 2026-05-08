@@ -263,16 +263,95 @@ main() {
   install_docker
   install_php
 
-  echo
-  log "All done."
-  info "Installed components:"
-  command -v ansible  >/dev/null && echo "  - $(ansible --version | head -n1)"
-  command -v docker   >/dev/null && echo "  - $(docker --version)"
-  command -v php      >/dev/null && echo "  - $(php -v | head -n1)"
-  command -v composer >/dev/null && echo "  - Composer $(composer --version --no-ansi 2>/dev/null | awk '{print $3}')"
-  if [[ -n "${SUDO_USER:-}" && "${SUDO_USER}" != "root" ]]; then
-    info "Log out and back in for docker group membership to take effect."
+  print_summary
+}
+
+print_summary() {
+  local target_user="${SUDO_USER:-$(whoami)}"
+  local docker_in_group=0
+  if [[ -n "${SUDO_USER:-}" && "${SUDO_USER}" != "root" ]] \
+     && id -nG "$SUDO_USER" 2>/dev/null | tr ' ' '\n' | grep -qx docker; then
+    docker_in_group=1
   fi
+
+  echo
+  printf '%s' "$GRN"
+  echo "============================================================"
+  echo "                  INSTALLATION SUMMARY"
+  echo "============================================================"
+  printf '%s' "$NC"
+
+  echo
+  echo "  Installed components:"
+  if command -v ansible >/dev/null 2>&1; then
+    echo "    [OK] $(ansible --version | head -n1)"
+  else
+    echo "    [--] Ansible        (skipped or not installed)"
+  fi
+  if command -v docker >/dev/null 2>&1; then
+    echo "    [OK] $(docker --version)"
+    docker compose version >/dev/null 2>&1 \
+      && echo "    [OK] $(docker compose version | head -n1)"
+  else
+    echo "    [--] Docker         (skipped or not installed)"
+  fi
+  if command -v php >/dev/null 2>&1; then
+    echo "    [OK] $(php -v | head -n1)"
+  else
+    echo "    [--] PHP            (skipped or not installed)"
+  fi
+  if command -v composer >/dev/null 2>&1; then
+    echo "    [OK] Composer $(composer --version --no-ansi 2>/dev/null | awk '{print $3}')"
+  else
+    echo "    [--] Composer       (skipped or not installed)"
+  fi
+
+  echo
+  echo "  Web servers status:"
+  for svc in apache2 nginx; do
+    if systemctl list-unit-files --no-legend 2>/dev/null \
+        | awk '{print $1}' | grep -qx "${svc}.service"; then
+      if systemctl is-active --quiet "$svc" 2>/dev/null; then
+        echo "    [!!] ${svc}: still active"
+      else
+        echo "    [OK] ${svc}: disabled"
+      fi
+    else
+      echo "    [--] ${svc}: not installed"
+    fi
+  done
+
+  printf '%s' "$GRN"
+  echo
+  echo "============================================================"
+  printf '%s' "$NC"
+
+  # ---- IMPORTANT: shell reload notice (English, intentional) ----
+  if [[ $docker_in_group -eq 1 ]]; then
+    printf '%s' "$YLW"
+    echo
+    echo "  >>> ACTION REQUIRED — DOCKER GROUP MEMBERSHIP <<<"
+    printf '%s' "$NC"
+    echo
+    echo "  User '${target_user}' has been added to the 'docker' group,"
+    echo "  but the change is NOT active in your current shell session."
+    echo
+    echo "  To run docker WITHOUT sudo, choose one:"
+    echo
+    echo "    1) Reload your shell groups in this session:"
+    echo "         newgrp docker"
+    echo
+    echo "    2) Or log out and log back in (recommended for SSH sessions):"
+    echo "         exit          # then reconnect via SSH"
+    echo
+    echo "    3) Or apply for the current shell only:"
+    echo "         exec sg docker newgrp \`id -gn\`"
+    echo
+    echo "  Verify with:    docker run --rm hello-world"
+    echo
+  fi
+
+  log "Done. Stack ready."
 }
 
 main "$@"
