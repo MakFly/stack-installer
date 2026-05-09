@@ -12,7 +12,11 @@
 #   SKIP_DOCKER=1     # skip Docker installation
 #   SKIP_ANSIBLE=1    # skip Ansible installation
 #   SKIP_PHP=1        # skip PHP installation
+#   SKIP_NODE=1       # skip Node.js installation
+#   SKIP_AI_CLIS=1    # skip Claude Code / Codex / opencode
 #   KEEP_WEBSERVERS=1 # do not disable apache2/nginx
+#
+# Re-running the script auto-upgrades every component to the latest version.
 
 set -euo pipefail
 
@@ -104,11 +108,7 @@ install_ansible() {
     info "SKIP_ANSIBLE set — skipping Ansible."
     return
   fi
-  if command -v ansible >/dev/null 2>&1; then
-    log "Ansible already installed: $(ansible --version | head -n1)"
-    return
-  fi
-  log "Installing Ansible..."
+  log "Installing/updating Ansible..."
   ensure_pkg ca-certificates curl gnupg
   if [[ "$OS_ID" == "ubuntu" ]]; then
     ensure_pkg software-properties-common
@@ -127,26 +127,22 @@ install_docker() {
     info "SKIP_DOCKER set — skipping Docker."
     return
   fi
-  if command -v docker >/dev/null 2>&1; then
-    log "Docker already installed: $(docker --version)"
-  else
-    log "Installing Docker (official repo)..."
-    ensure_pkg ca-certificates curl gnupg
-    install -m 0755 -d /etc/apt/keyrings
-    if [[ ! -f /etc/apt/keyrings/docker.gpg ]]; then
-      curl -fsSL "https://download.docker.com/linux/${OS_ID}/gpg" \
-        | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-      chmod a+r /etc/apt/keyrings/docker.gpg
-    fi
-    local arch
-    arch="$(dpkg --print-architecture)"
-    echo "deb [arch=${arch} signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/${OS_ID} ${OS_CODENAME} stable" \
-      > /etc/apt/sources.list.d/docker.list
-    unset _APT_UPDATED
-    apt_update_once
-    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-      docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+  log "Installing/updating Docker (official repo)..."
+  ensure_pkg ca-certificates curl gnupg
+  install -m 0755 -d /etc/apt/keyrings
+  if [[ ! -f /etc/apt/keyrings/docker.gpg ]]; then
+    curl -fsSL "https://download.docker.com/linux/${OS_ID}/gpg" \
+      | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+    chmod a+r /etc/apt/keyrings/docker.gpg
   fi
+  local arch
+  arch="$(dpkg --print-architecture)"
+  echo "deb [arch=${arch} signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/${OS_ID} ${OS_CODENAME} stable" \
+    > /etc/apt/sources.list.d/docker.list
+  unset _APT_UPDATED
+  apt_update_once
+  DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+    docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
   systemctl enable --now docker
   log "Docker: $(docker --version)"
 
@@ -238,17 +234,77 @@ install_php() {
   done
   DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends "${php_core[@]}" "${php_ext[@]}"
 
-  # Install Composer
+  # Install / update Composer
   if ! command -v composer >/dev/null 2>&1; then
     log "Installing Composer..."
     local tmp; tmp="$(mktemp -d)"
     curl -fsSL https://getcomposer.org/installer -o "$tmp/composer-setup.php"
     php "$tmp/composer-setup.php" --quiet --install-dir=/usr/local/bin --filename=composer
     rm -rf "$tmp"
+  else
+    log "Updating Composer..."
+    composer self-update --no-interaction --quiet 2>/dev/null \
+      || warn "composer self-update failed (continuing)."
   fi
 
   log "PHP: $(php -v | head -n1)"
   log "Composer: $(composer --version 2>/dev/null || echo 'n/a')"
+}
+
+# ---------- Node.js (NodeSource LTS) ----------
+install_node() {
+  if [[ -n "${SKIP_NODE:-}" ]]; then
+    info "SKIP_NODE set — skipping Node.js."
+    return
+  fi
+  log "Installing/updating Node.js (NodeSource LTS)..."
+  ensure_pkg ca-certificates curl gnupg
+  install -m 0755 -d /etc/apt/keyrings
+  if [[ ! -f /etc/apt/keyrings/nodesource.gpg ]]; then
+    curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key \
+      | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg
+    chmod a+r /etc/apt/keyrings/nodesource.gpg
+  fi
+  # Pin to Node 22 LTS (active LTS through 2027)
+  local node_major="${NODE_MAJOR:-22}"
+  echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_${node_major}.x nodistro main" \
+    > /etc/apt/sources.list.d/nodesource.list
+  unset _APT_UPDATED
+  apt_update_once
+  DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends nodejs
+  log "Node.js: $(node --version)  npm: $(npm --version)"
+}
+
+# ---------- AI CLIs (Claude Code, Codex, opencode) ----------
+npm_install_or_update() {
+  # Always pull @latest so reruns upgrade.
+  local pkg="$1"
+  log "npm i -g ${pkg}@latest"
+  npm install -g --silent --no-fund --no-audit "${pkg}@latest"
+}
+
+install_ai_clis() {
+  if [[ -n "${SKIP_AI_CLIS:-}" ]]; then
+    info "SKIP_AI_CLIS set — skipping Claude Code / Codex / opencode."
+    return
+  fi
+  if ! command -v npm >/dev/null 2>&1; then
+    warn "npm not available — cannot install AI CLIs. Set SKIP_NODE=0 or install Node.js."
+    return
+  fi
+
+  log "Installing/updating Claude Code (@anthropic-ai/claude-code)..."
+  npm_install_or_update "@anthropic-ai/claude-code"
+
+  log "Installing/updating OpenAI Codex (@openai/codex)..."
+  npm_install_or_update "@openai/codex"
+
+  log "Installing/updating opencode (official installer)..."
+  # Force a system-wide install dir so all users get the binary.
+  if ! OPENCODE_INSTALL_DIR=/usr/local/bin curl -fsSL https://opencode.ai/install \
+       | OPENCODE_INSTALL_DIR=/usr/local/bin bash; then
+    warn "opencode installer failed (continuing)."
+  fi
 }
 
 # ---------- main ----------
@@ -262,6 +318,8 @@ main() {
   install_ansible
   install_docker
   install_php
+  install_node
+  install_ai_clis
 
   print_summary
 }
@@ -304,6 +362,26 @@ print_summary() {
     echo "    [OK] Composer $(composer --version --no-ansi 2>/dev/null | awk '{print $3}')"
   else
     echo "    [--] Composer       (skipped or not installed)"
+  fi
+  if command -v node >/dev/null 2>&1; then
+    echo "    [OK] Node.js $(node --version)  /  npm $(npm --version 2>/dev/null)"
+  else
+    echo "    [--] Node.js        (skipped or not installed)"
+  fi
+  if command -v claude >/dev/null 2>&1; then
+    echo "    [OK] Claude Code $(claude --version 2>/dev/null | head -n1)"
+  else
+    echo "    [--] Claude Code    (skipped or not installed)"
+  fi
+  if command -v codex >/dev/null 2>&1; then
+    echo "    [OK] Codex $(codex --version 2>/dev/null | head -n1)"
+  else
+    echo "    [--] Codex          (skipped or not installed)"
+  fi
+  if command -v opencode >/dev/null 2>&1; then
+    echo "    [OK] opencode $(opencode --version 2>/dev/null | head -n1)"
+  else
+    echo "    [--] opencode       (skipped or not installed)"
   fi
 
   echo
