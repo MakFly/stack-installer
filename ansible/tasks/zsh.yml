@@ -78,12 +78,18 @@
           local branch
           branch="$(git symbolic-ref --short HEAD 2>/dev/null || git rev-parse --short HEAD 2>/dev/null)"
           if [[ -n "$branch" ]]; then
-            printf ' [git:%s]' "$branch"
+            printf '%F{magenta}[git:%s]%f / ' "$branch"
           else
-            printf ' [git]'
+            printf '%F{magenta}[git]%f / '
           fi
         else
-          printf ' [no-git]'
+          return 1
+        fi
+      }
+
+      stack_no_git_marker() {
+        if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+          printf ' / %F{yellow}[no-git]%f'
         fi
       }
 
@@ -91,7 +97,7 @@
 
       export EDITOR="${EDITOR:-nano}"
       export VISUAL="${VISUAL:-$EDITOR}"
-      PROMPT='%F{yellow}%*%f %F{blue}%/%f$(stack_git_prompt)$ '
+      PROMPT='$(stack_git_prompt)%F{yellow}%*%f %F{blue}%/%f$(stack_no_git_marker)%f$ '
 
       alias ll='ls -lah'
       alias la='ls -A'

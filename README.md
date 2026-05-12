@@ -79,7 +79,7 @@ Zsh setup uses the built-in `robbyrussell` theme with a custom compact prompt th
 
 - Current time
 - Full current path
-- Git status (`[git:<branch>]`) when inside a Git repository, `[no-git]` otherwise
+- Git segment (`[git:<branch>]`, in color) when inside a Git repository, `[no-git]` when not
 
 Zsh plugins come from the official GitHub repositories:
 
