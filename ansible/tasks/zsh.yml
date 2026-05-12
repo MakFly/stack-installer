@@ -47,6 +47,8 @@
       # Managed by stack-installer
       export ZSH="$HOME/.oh-my-zsh"
       ZSH_THEME="robbyrussell"
+      autoload -Uz colors
+      colors
 
       HISTFILE="$HOME/.zsh_history"
       HISTSIZE=10000
@@ -78,9 +80,9 @@
           local branch
           branch="$(git symbolic-ref --short HEAD 2>/dev/null || git rev-parse --short HEAD 2>/dev/null)"
           if [[ -n "$branch" ]]; then
-            printf '%F{magenta}[git:%s]%f / ' "$branch"
+            printf '%s' "${fg[magenta]}[git:${branch}]${reset_color} / "
           else
-            printf '%F{magenta}[git]%f / '
+            printf '%s' "${fg[magenta]}[git]${reset_color} / "
           fi
         else
           return 1
@@ -89,11 +91,13 @@
 
       stack_no_git_marker() {
         if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-          printf ' / %F{yellow}[no-git]%f'
+          printf ' / [no-git]'
         fi
       }
 
       source "$ZSH/oh-my-zsh.sh"
+
+      setopt NO_BEEP
 
       export EDITOR="${EDITOR:-nano}"
       export VISUAL="${VISUAL:-$EDITOR}"
