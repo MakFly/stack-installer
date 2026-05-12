@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 # install.sh - bootstrap stack-installer CLI, then run it.
 #
+# This installer is intentionally minimal: install Ansible first, deploy the project,
+# and then execute the local `stack-installer` CLI that drives component installation.
+#
 # Usage:
 #   curl -fsSL https://github.com/MakFly/stack-installer/raw/refs/heads/main/install.sh | sudo bash
 #   wget -qO- https://github.com/MakFly/stack-installer/raw/refs/heads/main/install.sh | sudo bash
@@ -182,6 +185,8 @@ sync_project() {
 main() {
   require_root
   detect_os
+  # These steps only repair known broken apt sources so bootstrap can run on systems
+  # that previously used partially configured repo files.
   remove_conflicting_docker_sources
   remove_php_ppa_sources
   install_ansible_first

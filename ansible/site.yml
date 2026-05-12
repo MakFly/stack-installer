@@ -23,14 +23,6 @@
         fail_msg: "stack-installer supports Debian/Ubuntu only."
 
   tasks:
-    - name: Install curl
-      ansible.builtin.import_tasks: tasks/curl.yml
-      when: "'curl' in selected_list"
-
-    - name: Install git
-      ansible.builtin.import_tasks: tasks/git.yml
-      when: "'git' in selected_list"
-
     - name: Install Docker CE
       ansible.builtin.import_tasks: tasks/docker.yml
       when: "'docker' in selected_list"
