@@ -1,0 +1,95 @@
+---
+- name: Install PHP repository dependencies
+  ansible.builtin.apt:
+    name:
+      - ca-certificates
+      - curl
+      - gnupg
+      - lsb-release
+      - apt-transport-https
+    state: present
+    update_cache: true
+
+- name: Create apt keyrings directory
+  ansible.builtin.file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: "0755"
+
+- name: Add Sury PHP key on Debian
+  ansible.builtin.get_url:
+    url: https://packages.sury.org/php/apt.gpg
+    dest: /etc/apt/keyrings/sury-php.asc
+    mode: "0644"
+  when: ansible_distribution == "Debian"
+
+- name: Add Sury PHP repository on Debian
+  ansible.builtin.apt_repository:
+    repo: "deb [signed-by=/etc/apt/keyrings/sury-php.asc] https://packages.sury.org/php/ {{ ansible_distribution_release }} main"
+    filename: sury-php
+    state: present
+    update_cache: true
+  when: ansible_distribution == "Debian"
+
+- name: Install software-properties-common on Ubuntu
+  ansible.builtin.apt:
+    name: software-properties-common
+    state: present
+  when: ansible_distribution == "Ubuntu"
+
+- name: Add ondrej/php PPA on Ubuntu
+  ansible.builtin.apt_repository:
+    repo: ppa:ondrej/php
+    state: present
+    update_cache: true
+  when: ansible_distribution == "Ubuntu"
+
+- name: Detect latest packaged PHP 8.x
+  ansible.builtin.shell: |
+    set -o pipefail
+    apt-cache search --names-only '^php[0-9]+\.[0-9]+$' \
+      | awk '{print $1}' \
+      | sed 's/^php//' \
+      | awk '/^8\./' \
+      | sort -V \
+      | tail -n1
+  args:
+    executable: /bin/bash
+  register: detected_php_version
+  changed_when: false
+  when: php_version | length == 0
+
+- name: Set selected PHP version
+  ansible.builtin.set_fact:
+    stack_php_version: "{{ php_version if php_version | length > 0 else detected_php_version.stdout }}"
+
+- name: Fail when no PHP 8.x package was detected
+  ansible.builtin.fail:
+    msg: "Could not detect a packaged PHP 8.x version."
+  when: stack_php_version | length == 0
+
+- name: Install PHP 8.x core packages without web server packages
+  ansible.builtin.apt:
+    name:
+      - "php{{ stack_php_version }}-cli"
+      - "php{{ stack_php_version }}-common"
+    state: latest
+    install_recommends: false
+
+- name: Install packaged PHP 8.x extensions when available
+  ansible.builtin.apt:
+    name: "{{ item }}"
+    state: latest
+    install_recommends: false
+  loop:
+    - "php{{ stack_php_version }}-curl"
+    - "php{{ stack_php_version }}-mbstring"
+    - "php{{ stack_php_version }}-xml"
+    - "php{{ stack_php_version }}-zip"
+    - "php{{ stack_php_version }}-intl"
+    - "php{{ stack_php_version }}-bcmath"
+    - "php{{ stack_php_version }}-opcache"
+    - "php{{ stack_php_version }}-readline"
+    - "php{{ stack_php_version }}-gd"
+  register: php_extension_install
+  failed_when: false

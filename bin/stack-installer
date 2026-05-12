@@ -1,0 +1,213 @@
+#!/usr/bin/env bash
+# Local CLI for stack-installer. Runs Ansible against localhost.
+
+set -euo pipefail
+
+RED=$'\033[0;31m'; GRN=$'\033[0;32m'; YLW=$'\033[1;33m'; BLU=$'\033[0;34m'; NC=$'\033[0m'
+log()  { printf '%s[+]%s %s\n' "$GRN" "$NC" "$*"; }
+warn() { printf '%s[!]%s %s\n' "$YLW" "$NC" "$*"; }
+err()  { printf '%s[x]%s %s\n' "$RED" "$NC" "$*" >&2; }
+info() { printf '%s[i]%s %s\n' "$BLU" "$NC" "$*"; }
+
+INSTALL_DIR="${STACK_INSTALLER_DIR:-/opt/stack-installer}"
+PLAYBOOK="${INSTALL_DIR}/ansible/site.yml"
+
+COMPONENTS=(
+  curl
+  git
+  docker
+  php
+  composer
+  nodejs
+  zsh
+  zsh_plugins
+)
+
+declare -A COMPONENT_LABELS=(
+  [curl]="curl"
+  [git]="git"
+  [docker]="Docker CE"
+  [php]="PHP 8.x"
+  [composer]="Composer"
+  [nodejs]="Node.js LTS + npm bundled"
+  [zsh]="Zsh + Oh My Zsh"
+  [zsh_plugins]="Zsh autosuggestions + syntax highlighting"
+)
+
+require_root() {
+  if [[ $EUID -ne 0 ]]; then
+    err "Run this command with sudo: sudo stack-installer"
+    exit 1
+  fi
+}
+
+require_playbook() {
+  if [[ ! -f "$PLAYBOOK" ]]; then
+    err "Missing Ansible playbook: $PLAYBOOK"
+    err "Re-run the bootstrap installer."
+    exit 1
+  fi
+}
+
+join_by_comma() {
+  local IFS=,
+  printf '%s' "$*"
+}
+
+is_known_component() {
+  local requested="$1"
+  local component
+  for component in "${COMPONENTS[@]}"; do
+    [[ "$requested" == "$component" ]] && return 0
+  done
+  return 1
+}
+
+validate_components() {
+  local requested
+  for requested in "$@"; do
+    if ! is_known_component "$requested"; then
+      err "Unknown component: ${requested}"
+      err "Valid components: $(join_by_comma "${COMPONENTS[@]}")"
+      exit 1
+    fi
+  done
+}
+
+run_ansible() {
+  local selected=("$@")
+  if (( ${#selected[@]} == 0 )); then
+    warn "No components selected."
+    return
+  fi
+  validate_components "${selected[@]}"
+
+  local selected_csv
+  selected_csv="$(join_by_comma "${selected[@]}")"
+  log "Applying components: ${selected_csv}"
+
+  ansible-playbook \
+    -i localhost, \
+    -c local \
+    "$PLAYBOOK" \
+    -e "selected_components=${selected_csv}" \
+    -e "node_major=${NODE_MAJOR:-}" \
+    -e "php_version=${PHP_VERSION:-}" \
+    -e "keep_webservers=${KEEP_WEBSERVERS:-0}"
+}
+
+show_versions() {
+  echo
+  echo "Current status:"
+  command -v ansible >/dev/null 2>&1 && ansible --version | head -n1 || echo "Ansible: not installed"
+  command -v curl >/dev/null 2>&1 && curl --version | head -n1 || echo "curl: not installed"
+  command -v git >/dev/null 2>&1 && git --version || echo "git: not installed"
+  command -v docker >/dev/null 2>&1 && docker --version || echo "Docker: not installed"
+  docker compose version 2>/dev/null || true
+  command -v php >/dev/null 2>&1 && php -v | head -n1 || echo "PHP: not installed"
+  command -v composer >/dev/null 2>&1 && composer --version --no-ansi || echo "Composer: not installed"
+  command -v node >/dev/null 2>&1 && printf 'Node.js %s / npm %s\n' "$(node --version)" "$(npm --version 2>/dev/null || echo n/a)" || echo "Node.js: not installed"
+  command -v zsh >/dev/null 2>&1 && zsh --version || echo "Zsh: not installed"
+  echo
+}
+
+choose_components() {
+  local selected=()
+  local i component answer
+  echo
+  echo "Select components to install/update."
+  echo "Answer y/n for each component."
+  echo
+  for component in "${COMPONENTS[@]}"; do
+    while true; do
+      read -r -p "Install/update ${COMPONENT_LABELS[$component]}? [y/N] " answer
+      case "$answer" in
+        y|Y|yes|YES) selected+=("$component"); break ;;
+        n|N|no|NO|"") break ;;
+        *) warn "Please answer y or n." ;;
+      esac
+    done
+  done
+  run_ansible "${selected[@]}"
+}
+
+print_menu() {
+  echo
+  echo "stack-installer"
+  echo "1) Install/update everything"
+  echo "2) Choose components"
+  echo "3) Update selected installed components"
+  echo "4) Show versions/status"
+  echo "5) Exit"
+  echo
+}
+
+interactive_menu() {
+  local choice
+  while true; do
+    print_menu
+    read -r -p "Choice [1-5]: " choice
+    case "$choice" in
+      1) run_ansible "${COMPONENTS[@]}" ;;
+      2) choose_components ;;
+      3) choose_components ;;
+      4) show_versions ;;
+      5|q|Q) exit 0 ;;
+      *) warn "Unknown choice." ;;
+    esac
+  done
+}
+
+usage() {
+  cat <<'EOF'
+Usage:
+  sudo stack-installer                 # interactive menu
+  sudo stack-installer --all           # install/update everything
+  sudo stack-installer --status        # show versions/status
+  sudo stack-installer --components php,nodejs,zsh_plugins
+
+Environment:
+  NODE_MAJOR=22      Pin a Node.js major line. Unset means current NodeSource LTS.
+  PHP_VERSION=8.3    Pin a PHP 8.x version. Unset means latest packaged PHP 8.x.
+  KEEP_WEBSERVERS=1  Do not stop/disable existing apache2/nginx services.
+EOF
+}
+
+main() {
+  case "${1:-}" in
+    -h|--help)
+      usage
+      exit 0
+      ;;
+  esac
+
+  require_root
+  require_playbook
+
+  case "${1:-}" in
+    --all)
+      run_ansible "${COMPONENTS[@]}"
+      ;;
+    --status)
+      show_versions
+      ;;
+    --components)
+      if [[ -z "${2:-}" ]]; then
+        err "--components expects a comma-separated list."
+        exit 1
+      fi
+      IFS=, read -r -a requested <<< "$2"
+      run_ansible "${requested[@]}"
+      ;;
+    "")
+      interactive_menu
+      ;;
+    *)
+      err "Unknown argument: $1"
+      usage
+      exit 1
+      ;;
+  esac
+}
+
+main "$@"

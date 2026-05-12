@@ -1,0 +1,29 @@
+---
+- name: Install NodeSource setup dependencies
+  ansible.builtin.apt:
+    name:
+      - ca-certificates
+      - curl
+      - gnupg
+    state: present
+    update_cache: true
+
+- name: Select NodeSource setup channel
+  ansible.builtin.set_fact:
+    nodesource_channel: "{{ ((node_major | string | length) > 0) | ternary(node_major ~ '.x', 'lts.x') }}"
+
+- name: Build NodeSource setup URL
+  ansible.builtin.set_fact:
+    nodesource_setup_url: "https://deb.nodesource.com/setup_{{ nodesource_channel }}"
+
+- name: Configure NodeSource repository
+  ansible.builtin.shell: "curl -fsSL {{ nodesource_setup_url | quote }} | bash -"
+  args:
+    executable: /bin/bash
+  changed_when: true
+
+- name: Install or update Node.js LTS and bundled npm
+  ansible.builtin.apt:
+    name: nodejs
+    state: latest
+    update_cache: true

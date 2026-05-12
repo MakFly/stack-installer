@@ -1,0 +1,8 @@
+---
+- name: Install curl
+  ansible.builtin.apt:
+    name:
+      - curl
+      - ca-certificates
+    state: present
+    update_cache: true

@@ -1,0 +1,60 @@
+---
+- name: Configure local development/server stack
+  hosts: localhost
+  connection: local
+  become: true
+  gather_facts: true
+
+  vars:
+    selected_components: ""
+    selected_list: "{{ selected_components.split(',') | reject('equalto', '') | list }}"
+    php_version: ""
+    node_major: ""
+    keep_webservers: "0"
+    target_user: "{{ ansible_env.SUDO_USER | default(ansible_user_id, true) }}"
+    target_group: "{{ lookup('pipe', 'id -gn ' ~ target_user) }}"
+    target_home: "{{ lookup('env', 'HOME') if target_user == 'root' else lookup('pipe', 'getent passwd ' ~ target_user ~ ' | cut -d: -f6') }}"
+
+  pre_tasks:
+    - name: Validate supported OS family
+      ansible.builtin.assert:
+        that:
+          - ansible_os_family == "Debian"
+        fail_msg: "stack-installer supports Debian/Ubuntu only."
+
+  tasks:
+    - name: Install curl
+      ansible.builtin.import_tasks: tasks/curl.yml
+      when: "'curl' in selected_list"
+
+    - name: Install git
+      ansible.builtin.import_tasks: tasks/git.yml
+      when: "'git' in selected_list"
+
+    - name: Install Docker CE
+      ansible.builtin.import_tasks: tasks/docker.yml
+      when: "'docker' in selected_list"
+
+    - name: Install PHP 8.x
+      ansible.builtin.import_tasks: tasks/php.yml
+      when: "'php' in selected_list or 'composer' in selected_list"
+
+    - name: Install Composer
+      ansible.builtin.import_tasks: tasks/composer.yml
+      when: "'composer' in selected_list"
+
+    - name: Install Node.js LTS and bundled npm
+      ansible.builtin.import_tasks: tasks/nodejs.yml
+      when: "'nodejs' in selected_list"
+
+    - name: Install Zsh and Oh My Zsh
+      ansible.builtin.import_tasks: tasks/zsh.yml
+      when: "'zsh' in selected_list or 'zsh_plugins' in selected_list"
+
+    - name: Install Zsh community plugins
+      ansible.builtin.import_tasks: tasks/zsh_plugins.yml
+      when: "'zsh_plugins' in selected_list"
+
+    - name: Optionally disable existing apache2/nginx
+      ansible.builtin.import_tasks: tasks/webservers.yml
+      when: keep_webservers | string not in ['1', 'true', 'True', 'yes', 'YES']

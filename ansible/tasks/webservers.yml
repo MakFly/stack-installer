@@ -1,0 +1,13 @@
+---
+- name: Gather service facts
+  ansible.builtin.service_facts:
+
+- name: Stop and disable existing web servers
+  ansible.builtin.service:
+    name: "{{ item }}"
+    state: stopped
+    enabled: false
+  loop:
+    - apache2
+    - nginx
+  when: "item ~ '.service' in ansible_facts.services"

@@ -1,0 +1,30 @@
+---
+- name: Ensure Oh My Zsh custom plugin directory exists
+  ansible.builtin.file:
+    path: "{{ target_home }}/.oh-my-zsh/custom/plugins"
+    state: directory
+    mode: "0755"
+
+- name: Clone or update zsh-autosuggestions
+  ansible.builtin.git:
+    repo: https://github.com/zsh-users/zsh-autosuggestions.git
+    dest: "{{ target_home }}/.oh-my-zsh/custom/plugins/zsh-autosuggestions"
+    version: master
+    depth: 1
+    update: true
+
+- name: Clone or update zsh-syntax-highlighting
+  ansible.builtin.git:
+    repo: https://github.com/zsh-users/zsh-syntax-highlighting.git
+    dest: "{{ target_home }}/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting"
+    version: master
+    depth: 1
+    update: true
+
+- name: Own Zsh plugin files
+  ansible.builtin.file:
+    path: "{{ target_home }}/.oh-my-zsh/custom/plugins"
+    owner: "{{ target_user }}"
+    group: "{{ target_group }}"
+    recurse: true
+  failed_when: false

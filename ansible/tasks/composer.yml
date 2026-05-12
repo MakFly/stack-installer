@@ -1,0 +1,24 @@
+---
+- name: Check Composer
+  ansible.builtin.command: composer --version --no-ansi
+  register: composer_check
+  changed_when: false
+  failed_when: false
+
+- name: Download Composer installer
+  ansible.builtin.get_url:
+    url: https://getcomposer.org/installer
+    dest: /tmp/composer-setup.php
+    mode: "0644"
+  when: composer_check.rc != 0
+
+- name: Install Composer
+  ansible.builtin.command: php /tmp/composer-setup.php --quiet --install-dir=/usr/local/bin --filename=composer
+  when: composer_check.rc != 0
+
+- name: Update Composer
+  ansible.builtin.command: composer self-update --no-interaction --quiet
+  register: composer_update
+  changed_when: "'Updating' in composer_update.stdout or composer_update.rc == 0"
+  failed_when: false
+  when: composer_check.rc == 0
