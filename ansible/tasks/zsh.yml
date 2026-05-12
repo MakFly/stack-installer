@@ -16,6 +16,104 @@
     depth: 1
     update: true
 
+- name: Check current zshrc
+  ansible.builtin.stat:
+    path: "{{ target_home }}/.zshrc"
+  register: zshrc_stat
+
+- name: Check whether zshrc is managed with current schema
+  ansible.builtin.command: grep -qxF '# Managed by stack-installer v4' "{{ target_home }}/.zshrc"
+  register: zshrc_managed
+  changed_when: false
+  failed_when: false
+  when: zshrc_stat.stat.exists
+
+- name: Back up zshrc before managed update
+  ansible.builtin.copy:
+    src: "{{ target_home }}/.zshrc"
+    dest: "{{ target_home }}/.zshrc.backup.{{ ansible_date_time.iso8601_basic_short }}"
+    remote_src: true
+    mode: preserve
+  when:
+    - zshrc_stat.stat.exists
+    - zshrc_managed is defined
+    - zshrc_managed.rc != 0
+
+- name: Install managed zshrc
+  ansible.builtin.copy:
+    dest: "{{ target_home }}/.zshrc"
+    owner: "{{ target_user }}"
+    group: "{{ target_group }}"
+    mode: "0644"
+    content: |
+      {% raw %}
+      # Managed by stack-installer v4
+      export ZSH="$HOME/.oh-my-zsh"
+      ZSH_THEME=""
+
+      HISTFILE="$HOME/.zsh_history"
+      HISTSIZE=10000
+      SAVEHIST=10000
+      setopt append_history
+      setopt share_history
+      setopt hist_ignore_dups
+      setopt hist_reduce_blanks
+      setopt autocd
+      unsetopt correct_all
+
+      plugins=(
+        git
+        docker
+        docker-compose
+        npm
+        node
+        composer
+        ansible
+      )
+
+      if [[ -d "$ZSH/custom/plugins/zsh-autosuggestions" ]]; then
+        plugins+=(zsh-autosuggestions)
+        ZSH_AUTOSUGGEST_STRATEGY=(history)
+        ZSH_AUTOSUGGEST_USE_ASYNC=1
+        ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE='fg=8'
+      fi
+
+      STACK_GIT_PROMPT=""
+
+      stack_prompt_precmd() {
+        local branch git_dirty
+        STACK_GIT_PROMPT=""
+        if command -v git >/dev/null 2>&1 && git -C "$PWD" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+          branch="$(git -C "$PWD" symbolic-ref --short HEAD 2>/dev/null || git -C "$PWD" rev-parse --short HEAD 2>/dev/null)"
+          branch="${branch:-detached}"
+          branch="${branch//\%/%%}"
+          git_dirty=""
+          if [[ -n "$(git -C "$PWD" status --porcelain 2>/dev/null)" ]]; then
+            git_dirty="*"
+          fi
+          STACK_GIT_PROMPT=" %F{yellow}*%f %F{magenta}[git:${branch}${git_dirty}]%f"
+        fi
+      }
+
+      source "$ZSH/oh-my-zsh.sh"
+
+      setopt NO_BEEP
+      setopt PROMPT_SUBST
+      autoload -Uz add-zsh-hook
+      add-zsh-hook -d precmd stack_prompt_precmd 2>/dev/null
+      add-zsh-hook precmd stack_prompt_precmd
+
+      export EDITOR="${EDITOR:-nano}"
+      export VISUAL="${VISUAL:-$EDITOR}"
+      export PATH="$HOME/.local/bin:$PATH"
+      PROMPT='%F{cyan}%D{%H:%M:%S}%f %F{yellow}*%f %F{blue}%~%f${STACK_GIT_PROMPT} $ '
+
+      alias ll='ls -lah'
+      alias la='ls -A'
+      alias dc='docker compose'
+      alias dps='docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"'
+      {% endraw %}
+
 - name: Own Oh My Zsh files
   ansible.builtin.file:
     path: "{{ target_home }}/.oh-my-zsh"

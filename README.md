@@ -74,10 +74,10 @@ The interactive panel can install/update everything or only selected components:
 | `php` | Installs PHP 8.x CLI/extensions without nginx/apache2 |
 | `composer` | Installs/updates Composer and pulls PHP when needed |
 | `nodejs` | Installs/updates current NodeSource LTS and bundled npm |
-| `zsh` | Installs Zsh + Oh My Zsh |
+| `zsh` | Installs Zsh + Oh My Zsh and manages `.zshrc` |
 | `zsh_plugins` | Installs/updates autosuggestions and syntax highlighting |
 
-Zsh setup disables the default OMZ theme and uses a custom compact prompt that shows:
+Zsh setup disables the default OMZ theme and installs a compact prompt using native Zsh prompt escapes, so completion redraws remain stable. The prompt shows:
 
 - Current time
 - Full current path
@@ -93,6 +93,8 @@ Zsh plugins come from the official GitHub repositories:
 
 - <https://github.com/zsh-users/zsh-autosuggestions>
 - <https://github.com/zsh-users/zsh-syntax-highlighting>
+
+The managed `.zshrc` enables `zsh-autosuggestions` automatically when the plugin is installed. `zsh-syntax-highlighting` is installed by `zsh_plugins` but not enabled by default to avoid redraw conflicts with completion-heavy sessions.
 
 Apache2 and Nginx are never installed. If they already exist, the playbook stops/disables them unless `KEEP_WEBSERVERS=1` is set.
 
@@ -179,6 +181,7 @@ curl -fsSL https://github.com/MakFly/stack-installer/raw/refs/heads/main/install
 - The CLI is relaunchable for full updates or selective updates.
 - Component tasks are idempotent.
 - PHP is installed without Apache2/Nginx packages.
+- Existing `~/.zshrc` is backed up before replacement when it does not match the current managed schema.
 - Docker group changes and default-shell changes require a new login shell or SSH reconnect.
 
 ---
