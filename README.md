@@ -75,7 +75,7 @@ The interactive panel can install/update everything or only selected components:
 | `zsh` | Installs Zsh + Oh My Zsh and manages `.zshrc` |
 | `zsh_plugins` | Installs/updates autosuggestions and syntax highlighting |
 
-Zsh setup uses the built-in `robbyrussell` theme with a custom compact prompt that shows:
+Zsh setup disables the default OMZ theme and uses a custom compact prompt that shows:
 
 - Current time
 - Full current path
