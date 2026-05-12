@@ -2,8 +2,8 @@
 # install.sh - bootstrap stack-installer CLI, then run it.
 #
 # Usage:
-#   curl -fsSL https://raw.githubusercontent.com/MakFly/stack-installer/main/install.sh | sudo bash
-#   wget -qO- https://raw.githubusercontent.com/MakFly/stack-installer/main/install.sh | sudo bash
+#   curl -fsSL https://github.com/MakFly/stack-installer/raw/refs/heads/main/install.sh | sudo bash
+#   wget -qO- https://github.com/MakFly/stack-installer/raw/refs/heads/main/install.sh | sudo bash
 #
 # Env overrides:
 #   STACK_INSTALLER_REPO=https://github.com/MakFly/stack-installer.git
