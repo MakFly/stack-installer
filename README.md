@@ -49,8 +49,8 @@ sudo stack-installer
 Example selection:
 
 ```text
-1,2,4       # base tools + Docker + Node.js
-3.1,3.2,5  # PHP + Composer + full shell setup
+1,3          # Docker + Node.js
+2.1,2.2,4.2 # PHP + Composer + Zsh syntax highlighting + autosuggest
 all         # everything
 ```
 
@@ -68,14 +68,14 @@ The interactive panel can install/update everything or only selected components:
 
 | Component | Behavior |
 | --- | --- |
-| `curl` | Installs curl and certificates |
-| `git` | Installs git |
 | `docker` | Installs Docker CE from Docker's official apt repo |
 | `php` | Installs PHP 8.x CLI/extensions without nginx/apache2 |
 | `composer` | Installs/updates Composer and pulls PHP when needed |
 | `nodejs` | Installs/updates current NodeSource LTS and bundled npm |
 | `zsh` | Installs Zsh + Oh My Zsh and manages `.zshrc` |
 | `zsh_plugins` | Installs/updates autosuggestions and syntax highlighting |
+
+Zsh setup uses `powerlevel10k` as default theme with a full path prompt configuration by default.
 
 Zsh plugins come from the official GitHub repositories:
 
