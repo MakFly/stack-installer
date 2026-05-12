@@ -84,6 +84,7 @@ Zsh setup uses the built-in `robbyrussell` theme with a custom compact prompt th
 Examples:
 - `[git:main] 23:12:34 /home/kev/Documents/lab/tools/stack-installer $`
 - `23:12:34 /home/kev [no-git] $`
+- In non-git directories, `/home/kev` is displayed as `~`.
 
 Zsh plugins come from the official GitHub repositories:
 

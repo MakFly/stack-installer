@@ -76,9 +76,10 @@
       ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE='fg=8'
 
       stack_prompt() {
-        local branch time_now cwd marker
+        local branch cwd marker time_now path
         time_now="$(date +%H:%M:%S)"
         cwd="$(pwd)"
+        path="${cwd/#$HOME/~}"
 
         if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
           branch="$(git symbolic-ref --short HEAD 2>/dev/null || git rev-parse --short HEAD 2>/dev/null)"
@@ -87,11 +88,11 @@
           printf '%s %s %s %s$ ' \
             "$marker" \
             "${fg[cyan]}${time_now}${reset_color}" \
-            "${fg[blue]}${cwd}${reset_color}"
+            "${fg[blue]}${path}${reset_color}"
         else
           printf '%s %s %s[no-git]%s $ ' \
             "${fg[cyan]}${time_now}${reset_color}" \
-            "${fg[blue]}${cwd}${reset_color}" \
+            "${fg[blue]}${path}${reset_color}" \
             "${fg[yellow]}" \
             "${reset_color}"
         fi
