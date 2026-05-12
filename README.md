@@ -204,6 +204,26 @@ docker run --rm -v "$PWD:/mnt" koalaman/shellcheck:stable /mnt/install.sh /mnt/b
 
 ---
 
+### Installer state note
+
+`git pull` in any other clone (for example `~/Documents/.../stack-installer`) does not automatically update the active installer copy.  
+The CLI uses `/opt/stack-installer` by default (copied by `install.sh` as root), so keep that path updated too when testing changes.
+
+To apply local file changes without waiting for another full bootstrap, from this repo run:
+
+```bash
+sudo STACK_INSTALLER_DIR="$PWD" stack-installer --components zsh,zsh_plugins
+```
+
+Then refresh your shell:
+
+```bash
+source ~/.zshrc
+exec zsh
+```
+
+---
+
 ## Post-install checks
 
 ```bash
