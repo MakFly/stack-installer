@@ -74,7 +74,7 @@ The interactive panel can install/update everything or only selected components:
 | `php` | Installs PHP 8.x CLI/extensions without nginx/apache2 |
 | `composer` | Installs/updates Composer and pulls PHP when needed |
 | `nodejs` | Installs/updates current NodeSource LTS and bundled npm |
-| `zsh` | Installs Zsh + Oh My Zsh and manages `.zshrc` |
+| `zsh` | Installs Zsh + Oh My Zsh |
 | `zsh_plugins` | Installs/updates autosuggestions and syntax highlighting |
 
 Zsh setup disables the default OMZ theme and uses a custom compact prompt that shows:
@@ -179,7 +179,6 @@ curl -fsSL https://github.com/MakFly/stack-installer/raw/refs/heads/main/install
 - The CLI is relaunchable for full updates or selective updates.
 - Component tasks are idempotent.
 - PHP is installed without Apache2/Nginx packages.
-- Existing `~/.zshrc` is replaced when it does not match the managed schema (previous versions are backed up before overwrite), so prompt updates are applied automatically on reinstall/update.
 - Docker group changes and default-shell changes require a new login shell or SSH reconnect.
 
 ---
