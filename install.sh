@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# install.sh — Ansible + Docker + PHP (latest 8.x) installer
+# install.sh — Ansible + Docker + PHP + Node.js + Zsh installer
 # Disables Apache2 / Nginx if present.
 #
 # Usage:
@@ -13,7 +13,9 @@
 #   SKIP_ANSIBLE=1    # skip Ansible installation
 #   SKIP_PHP=1        # skip PHP installation
 #   SKIP_NODE=1       # skip Node.js installation
+#   NODE_MAJOR=24     # pin a specific Node.js major version (default: LTS 24)
 #   SKIP_AI_CLIS=1    # skip Claude Code / Codex / opencode
+#   SKIP_ZSH=1        # skip Zsh / Oh My Zsh installation
 #   KEEP_WEBSERVERS=1 # do not disable apache2/nginx
 #
 # Re-running the script auto-upgrades every component to the latest version.
@@ -72,6 +74,14 @@ ensure_pkg() {
     log "Installing: ${missing[*]}"
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends "${missing[@]}"
   fi
+}
+
+# ---------- baseline packages ----------
+install_basics() {
+  log "Installing/checking baseline packages..."
+  ensure_pkg curl git ca-certificates gnupg lsb-release
+  log "curl: $(curl --version | head -n1)"
+  log "git: $(git --version)"
 }
 
 # ---------- web server disable ----------
@@ -265,14 +275,133 @@ install_node() {
       | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg
     chmod a+r /etc/apt/keyrings/nodesource.gpg
   fi
-  # Pin to Node 22 LTS (active LTS through 2027)
-  local node_major="${NODE_MAJOR:-22}"
+  # Pin to Node 24 LTS by default. Override with NODE_MAJOR if needed.
+  local node_major="${NODE_MAJOR:-24}"
   echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_${node_major}.x nodistro main" \
     > /etc/apt/sources.list.d/nodesource.list
   unset _APT_UPDATED
   apt_update_once
   DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends nodejs
   log "Node.js: $(node --version)  npm: $(npm --version)"
+}
+
+# ---------- Zsh / Oh My Zsh ----------
+git_clone_or_update() {
+  local repo_url="$1"
+  local dest="$2"
+  local label="$3"
+
+  if [[ -d "$dest/.git" ]]; then
+    log "Updating ${label}..."
+    git -c safe.directory="$dest" -C "$dest" pull --ff-only --quiet \
+      || warn "Could not update ${label} (continuing)."
+  elif [[ -e "$dest" ]]; then
+    warn "${dest} already exists but is not a git checkout — skipping ${label}."
+  else
+    log "Installing ${label}..."
+    git clone --depth=1 --quiet "$repo_url" "$dest"
+  fi
+}
+
+install_zsh() {
+  if [[ -n "${SKIP_ZSH:-}" ]]; then
+    info "SKIP_ZSH set — skipping Zsh."
+    return
+  fi
+
+  log "Installing/configuring Zsh + Oh My Zsh..."
+  ensure_pkg zsh git curl
+
+  local target_user="${SUDO_USER:-root}"
+  local target_group
+  target_group="$(id -gn "$target_user" 2>/dev/null || echo "$target_user")"
+  local target_home
+  target_home="$(getent passwd "$target_user" | cut -d: -f6)"
+  if [[ -z "$target_home" || ! -d "$target_home" ]]; then
+    warn "Could not resolve home for '${target_user}' — skipping Zsh configuration."
+    return
+  fi
+
+  local zsh_bin
+  zsh_bin="$(command -v zsh)"
+  local ohmyzsh_dir="${target_home}/.oh-my-zsh"
+  local zsh_custom="${ohmyzsh_dir}/custom"
+  local zshrc="${target_home}/.zshrc"
+  local managed_marker="# Managed by stack-installer"
+
+  git_clone_or_update "https://github.com/ohmyzsh/ohmyzsh.git" "$ohmyzsh_dir" "Oh My Zsh"
+
+  install -d -m 0755 "${zsh_custom}/plugins"
+  git_clone_or_update \
+    "https://github.com/zsh-users/zsh-autosuggestions.git" \
+    "${zsh_custom}/plugins/zsh-autosuggestions" \
+    "zsh-autosuggestions"
+  git_clone_or_update \
+    "https://github.com/zsh-users/zsh-syntax-highlighting.git" \
+    "${zsh_custom}/plugins/zsh-syntax-highlighting" \
+    "zsh-syntax-highlighting"
+
+  if [[ -f "$zshrc" ]] && ! grep -qxF "$managed_marker" "$zshrc"; then
+    local backup="${zshrc}.backup.$(date +%Y%m%d-%H%M%S)"
+    cp "$zshrc" "$backup"
+    chown "$target_user:$target_group" "$backup" 2>/dev/null || true
+    info "Backed up existing .zshrc to ${backup}"
+  fi
+
+  cat > "$zshrc" <<'EOF'
+# Managed by stack-installer
+export ZSH="$HOME/.oh-my-zsh"
+ZSH_THEME="robbyrussell"
+
+HISTFILE="$HOME/.zsh_history"
+HISTSIZE=10000
+SAVEHIST=10000
+setopt append_history
+setopt share_history
+setopt hist_ignore_dups
+setopt hist_reduce_blanks
+setopt autocd
+unsetopt correct_all
+
+plugins=(
+  git
+  docker
+  docker-compose
+  npm
+  node
+  composer
+  ansible
+  zsh-autosuggestions
+  zsh-syntax-highlighting
+)
+
+ZSH_AUTOSUGGEST_STRATEGY=(history completion)
+ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE='fg=8'
+
+source "$ZSH/oh-my-zsh.sh"
+
+export EDITOR="${EDITOR:-nano}"
+export VISUAL="${VISUAL:-$EDITOR}"
+
+alias ll='ls -lah'
+alias la='ls -A'
+alias dc='docker compose'
+alias dps='docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"'
+EOF
+
+  chown -R "$target_user:$target_group" "$ohmyzsh_dir" "$zshrc" 2>/dev/null || true
+
+  local current_shell
+  current_shell="$(getent passwd "$target_user" | cut -d: -f7)"
+  if [[ "$current_shell" != "$zsh_bin" ]]; then
+    if chsh -s "$zsh_bin" "$target_user"; then
+      info "Changed default shell for '${target_user}' to ${zsh_bin} (new login required)."
+    else
+      warn "Could not change default shell for '${target_user}' to ${zsh_bin}."
+    fi
+  fi
+
+  log "Zsh: $(zsh --version)"
 }
 
 # ---------- AI CLIs (Claude Code, Codex, opencode) ----------
@@ -312,7 +441,7 @@ main() {
   require_root
   detect_os
   apt_update_once
-  ensure_pkg curl ca-certificates gnupg lsb-release
+  install_basics
 
   handle_webservers
   install_ansible
@@ -320,6 +449,7 @@ main() {
   install_php
   install_node
   install_ai_clis
+  install_zsh
 
   print_summary
 }
@@ -341,6 +471,16 @@ print_summary() {
 
   echo
   echo "  Installed components:"
+  if command -v curl >/dev/null 2>&1; then
+    echo "    [OK] $(curl --version | head -n1)"
+  else
+    echo "    [--] curl           (not installed)"
+  fi
+  if command -v git >/dev/null 2>&1; then
+    echo "    [OK] $(git --version)"
+  else
+    echo "    [--] git            (not installed)"
+  fi
   if command -v ansible >/dev/null 2>&1; then
     echo "    [OK] $(ansible --version | head -n1)"
   else
@@ -382,6 +522,14 @@ print_summary() {
     echo "    [OK] opencode $(opencode --version 2>/dev/null | head -n1)"
   else
     echo "    [--] opencode       (skipped or not installed)"
+  fi
+  if command -v zsh >/dev/null 2>&1; then
+    echo "    [OK] $(zsh --version)"
+    local target_shell
+    target_shell="$(getent passwd "$target_user" | cut -d: -f7)"
+    echo "    [OK] ${target_user} shell: ${target_shell}"
+  else
+    echo "    [--] Zsh            (skipped or not installed)"
   fi
 
   echo
@@ -426,6 +574,17 @@ print_summary() {
     echo "         exec sg docker newgrp \`id -gn\`"
     echo
     echo "  Verify with:    docker run --rm hello-world"
+    echo
+  fi
+
+  if command -v zsh >/dev/null 2>&1; then
+    printf '%s' "$YLW"
+    echo
+    echo "  >>> ACTION REQUIRED — ZSH DEFAULT SHELL <<<"
+    printf '%s' "$NC"
+    echo
+    echo "  If '${target_user}' shell was changed to zsh, open a new login shell"
+    echo "  or reconnect via SSH for it to take effect."
     echo
   fi
 
