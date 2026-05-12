@@ -75,6 +75,30 @@ remove_ansible_ppa_sources() {
   fi
 }
 
+remove_conflicting_docker_sources() {
+  local files=()
+  local f
+
+  while IFS= read -r -d '' f; do
+    if grep -q 'download.docker.com/linux' "$f" 2>/dev/null; then
+      files+=("$f")
+    fi
+  done < <(find /etc/apt/sources.list.d -maxdepth 1 -type f \( -name '*.list' -o -name '*.sources' \) -print0 2>/dev/null)
+
+  if grep -q 'download.docker.com/linux' /etc/apt/sources.list 2>/dev/null; then
+    warn "Docker apt entry found in /etc/apt/sources.list; disabling matching lines."
+    cp /etc/apt/sources.list "/etc/apt/sources.list.stack-installer-backup.$(date +%Y%m%d%H%M%S)"
+    sed -i -E '/download\.docker\.com\/linux/s/^/# disabled by stack-installer: /' /etc/apt/sources.list
+  fi
+
+  if (( ${#files[@]} )); then
+    warn "Removing Docker apt source(s) to clear signed-by conflicts: ${files[*]}"
+    for f in "${files[@]}"; do
+      rm -f "$f"
+    done
+  fi
+}
+
 ensure_pkg() {
   local pkgs=("$@")
   local missing=()
@@ -134,6 +158,7 @@ sync_project() {
 main() {
   require_root
   detect_os
+  remove_conflicting_docker_sources
   install_ansible_first
   ensure_pkg rsync
   sync_project
