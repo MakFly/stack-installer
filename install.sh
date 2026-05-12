@@ -154,6 +154,7 @@ sync_project() {
   local repo_url="${STACK_INSTALLER_REPO:-https://github.com/MakFly/stack-installer.git}"
   local ref="${STACK_INSTALLER_REF:-main}"
   local script_dir
+  local -a git_cmd
   script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd -P)"
 
   if [[ -f "${script_dir}/ansible/site.yml" && -f "${script_dir}/bin/stack-installer" ]]; then
@@ -166,9 +167,13 @@ sync_project() {
   else
     log "Installing project from ${repo_url} (${ref})..."
     if [[ -d "${install_dir}/.git" ]]; then
-      git -c safe.directory="$install_dir" -C "$install_dir" fetch --quiet origin "$ref"
-      git -c safe.directory="$install_dir" -C "$install_dir" checkout --quiet "$ref"
-      git -c safe.directory="$install_dir" -C "$install_dir" pull --ff-only --quiet origin "$ref"
+      git_cmd=(git -c "safe.directory=${install_dir}" -C "$install_dir")
+      # Refresh project repo and discard local drift to avoid interactive merge conflicts.
+      "${git_cmd[@]}" remote set-url origin "$repo_url"
+      "${git_cmd[@]}" fetch --quiet origin "$ref"
+      "${git_cmd[@]}" reset --hard "origin/$ref"
+      "${git_cmd[@]}" clean -fd
+      "${git_cmd[@]}" checkout -f -B "$ref" "origin/$ref"
     elif [[ -e "$install_dir" ]]; then
       warn "${install_dir} exists but is not a git checkout; replacing it."
       rm -rf "$install_dir"
