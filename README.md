@@ -80,6 +80,7 @@ Zsh setup disables the default OMZ theme and uses a custom compact prompt that s
 - Current time
 - Full current path
 - Git segment (`[git:<branch>]`, in color) when inside a Git repository
+  - Appending `*` to `[git:<branch>]` means the repo has uncommitted/untracked changes.
 
 Examples:
 - `23:12:34 * ~/Documents/lab/tools/stack-installer * [git:main] $`
