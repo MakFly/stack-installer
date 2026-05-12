@@ -23,7 +23,7 @@ or with `wget`:
 wget -qO- https://raw.githubusercontent.com/MakFly/stack-installer/main/install.sh | sudo bash
 ```
 
-The bootstrap installs Ansible first, installs `/usr/local/bin/stack-installer`, then launches the CLI automatically.
+The bootstrap installs Ansible first, installs the real local command `/usr/local/bin/stack-installer`, then launches the CLI automatically. When installed through `curl ... | sudo bash`, the menu is attached back to `/dev/tty` so it remains interactive.
 
 ---
 

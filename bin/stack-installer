@@ -49,6 +49,12 @@ require_playbook() {
   fi
 }
 
+attach_tty_for_interactive_mode() {
+  if [[ $# -eq 0 && ! -t 0 && -r /dev/tty && -w /dev/tty ]]; then
+    exec "$0" </dev/tty >/dev/tty
+  fi
+}
+
 join_by_comma() {
   local IFS=,
   printf '%s' "$*"
@@ -174,6 +180,8 @@ EOF
 }
 
 main() {
+  attach_tty_for_interactive_mode "$@"
+
   case "${1:-}" in
     -h|--help)
       usage

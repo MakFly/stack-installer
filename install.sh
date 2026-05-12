@@ -121,7 +121,12 @@ main() {
 
   if [[ -z "${STACK_INSTALLER_NO_RUN:-}" ]]; then
     log "Launching stack-installer..."
-    exec /usr/local/bin/stack-installer
+    if [[ -r /dev/tty && -w /dev/tty ]]; then
+      exec /usr/local/bin/stack-installer </dev/tty >/dev/tty
+    fi
+    warn "No interactive TTY available; CLI installed but not launched."
+    info "Run: sudo stack-installer"
+    exit 0
   fi
 
   info "STACK_INSTALLER_NO_RUN set - run 'sudo stack-installer' when ready."
