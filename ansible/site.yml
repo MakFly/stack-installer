@@ -11,7 +11,7 @@
     php_version: ""
     node_major: ""
     keep_webservers: "0"
-    target_user: "{{ ansible_env.SUDO_USER | default(ansible_user_id, true) }}"
+    target_user: "{{ ansible_facts['env']['SUDO_USER'] | default(ansible_facts['user_id'], true) }}"
     target_group: "{{ lookup('pipe', 'id -gn ' ~ target_user) }}"
     target_home: "{{ lookup('env', 'HOME') if target_user == 'root' else lookup('pipe', 'getent passwd ' ~ target_user ~ ' | cut -d: -f6') }}"
 
@@ -19,7 +19,7 @@
     - name: Validate supported OS family
       ansible.builtin.assert:
         that:
-          - ansible_os_family == "Debian"
+          - ansible_facts['os_family'] == "Debian"
         fail_msg: "stack-installer supports Debian/Ubuntu only."
 
   tasks:

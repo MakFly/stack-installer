@@ -40,10 +40,18 @@ On Ubuntu releases where the Ansible PPA is not published yet, the bootstrap use
 5. Install the local CLI at `/usr/local/bin/stack-installer`.
 6. Launch the CLI.
 
-`stack-installer` is the day-to-day command:
+`stack-installer` is the day-to-day command. The interactive menu shows a component tree and lets you choose groups or individual items by number instead of answering a long y/n wizard:
 
 ```bash
 sudo stack-installer
+```
+
+Example selection:
+
+```text
+1,2,4       # base tools + Docker + Node.js
+3.1,3.2,5  # PHP + Composer + full shell setup
+all         # everything
 ```
 
 It runs Ansible locally with:

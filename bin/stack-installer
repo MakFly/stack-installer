@@ -34,6 +34,22 @@ declare -A COMPONENT_LABELS=(
   [zsh_plugins]="Zsh autosuggestions + syntax highlighting"
 )
 
+declare -A SELECTION_MAP=(
+  [1]="curl git"
+  [1.1]="curl"
+  [1.2]="git"
+  [2]="docker"
+  [2.1]="docker"
+  [3]="php composer"
+  [3.1]="php"
+  [3.2]="composer"
+  [4]="nodejs"
+  [4.1]="nodejs"
+  [5]="zsh zsh_plugins"
+  [5.1]="zsh"
+  [5.2]="zsh_plugins"
+)
+
 require_root() {
   if [[ $EUID -ne 0 ]]; then
     err "Run this command with sudo: sudo stack-installer"
@@ -50,7 +66,7 @@ require_playbook() {
 }
 
 attach_tty_for_interactive_mode() {
-  if [[ $# -eq 0 && ! -t 0 && -r /dev/tty && -w /dev/tty ]]; then
+  if [[ $# -eq 0 && ! -t 0 ]] && { true </dev/tty >/dev/tty; } 2>/dev/null; then
     exec "$0" </dev/tty >/dev/tty
   fi
 }
@@ -117,34 +133,126 @@ show_versions() {
   echo
 }
 
+add_component_once() {
+  local component="$1"
+  local existing
+  for existing in "${selected[@]:-}"; do
+    [[ "$existing" == "$component" ]] && return 0
+  done
+  selected+=("$component")
+}
+
+print_component_tree() {
+  cat <<'EOF'
+
+Choose components to install/update:
+
+  1) Base tools
+     1.1  curl
+     1.2  git
+
+  2) Containers
+     2.1  Docker CE
+
+  3) PHP stack
+     3.1  PHP 8.x
+     3.2  Composer
+
+  4) JavaScript runtime
+     4.1  Node.js LTS + bundled npm
+
+  5) Shell
+     5.1  Zsh + Oh My Zsh
+     5.2  Zsh autosuggestions + syntax highlighting
+
+Examples:
+  all              install/update everything
+  1,2,4           base tools + Docker + Node.js
+  3.1,3.2,5.2     PHP + Composer + Zsh plugins
+
+EOF
+}
+
 choose_components() {
   local selected=()
-  local i component answer
-  echo
-  echo "Select components to install/update."
-  echo "Answer y/n for each component."
-  echo
-  for component in "${COMPONENTS[@]}"; do
-    while true; do
-      read -r -p "Install/update ${COMPONENT_LABELS[$component]}? [y/N] " answer
-      case "$answer" in
-        y|Y|yes|YES) selected+=("$component"); break ;;
-        n|N|no|NO|"") break ;;
-        *) warn "Please answer y or n." ;;
-      esac
+  local answer token component
+
+  print_component_tree
+  read -r -p "Selection: " answer
+
+  case "$answer" in
+    all|ALL|a|A)
+      run_ansible "${COMPONENTS[@]}"
+      return
+      ;;
+    "")
+      warn "No components selected."
+      return
+      ;;
+  esac
+
+  for token in ${answer//,/ }; do
+    if [[ -z "${SELECTION_MAP[$token]:-}" ]]; then
+      err "Unknown selection: ${token}"
+      return 1
+    fi
+    for component in ${SELECTION_MAP[$token]}; do
+      add_component_once "$component"
     done
   done
+
   run_ansible "${selected[@]}"
+}
+
+choose_installed_components() {
+  local selected=()
+  local answer token component
+
+  echo
+  echo "Installed-component detection is intentionally conservative."
+  echo "Select the installed components you want to update from the tree."
+  print_component_tree
+  read -r -p "Selection: " answer
+
+  case "$answer" in
+    all|ALL|a|A)
+      run_ansible "${COMPONENTS[@]}"
+      return
+      ;;
+    "")
+      warn "No components selected."
+      return
+      ;;
+  esac
+
+  for token in ${answer//,/ }; do
+    if [[ -z "${SELECTION_MAP[$token]:-}" ]]; then
+      err "Unknown selection: ${token}"
+      return 1
+    fi
+    for component in ${SELECTION_MAP[$token]}; do
+      add_component_once "$component"
+    done
+  done
+
+  run_ansible "${selected[@]}"
+}
+
+preview_component_tree() {
+  echo
+  echo "Component tree:"
+  print_component_tree
 }
 
 print_menu() {
   echo
   echo "stack-installer"
   echo "1) Install/update everything"
-  echo "2) Choose components"
-  echo "3) Update selected installed components"
+  echo "2) Choose components from tree"
+  echo "3) Update selected components from tree"
   echo "4) Show versions/status"
-  echo "5) Exit"
+  echo "5) Show component tree"
+  echo "6) Exit"
   echo
 }
 
@@ -152,13 +260,14 @@ interactive_menu() {
   local choice
   while true; do
     print_menu
-    read -r -p "Choice [1-5]: " choice
+    read -r -p "Choice [1-6]: " choice
     case "$choice" in
       1) run_ansible "${COMPONENTS[@]}" ;;
       2) choose_components ;;
-      3) choose_components ;;
+      3) choose_installed_components ;;
       4) show_versions ;;
-      5|q|Q) exit 0 ;;
+      5) preview_component_tree ;;
+      6|q|Q) exit 0 ;;
       *) warn "Unknown choice." ;;
     esac
   done

@@ -14,15 +14,36 @@
     state: directory
     mode: "0755"
 
+- name: Find existing Docker apt source files
+  ansible.builtin.shell: |
+    grep -rl 'download.docker.com/linux' /etc/apt/sources.list.d /etc/apt/sources.list 2>/dev/null || true
+  args:
+    executable: /bin/bash
+  register: docker_source_files
+  changed_when: false
+
+- name: Remove existing Docker source files from sources.list.d
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop: "{{ docker_source_files.stdout_lines | select('match', '^/etc/apt/sources\\.list\\.d/') | list }}"
+
+- name: Disable Docker entries in /etc/apt/sources.list
+  ansible.builtin.replace:
+    path: /etc/apt/sources.list
+    regexp: '^(deb.*download\.docker\.com/linux.*)$'
+    replace: '# disabled by stack-installer: \1'
+  when: "'/etc/apt/sources.list' in docker_source_files.stdout_lines"
+
 - name: Download Docker GPG key
   ansible.builtin.get_url:
-    url: "https://download.docker.com/linux/{{ ansible_distribution | lower }}/gpg"
+    url: "https://download.docker.com/linux/{{ ansible_facts['distribution'] | lower }}/gpg"
     dest: /etc/apt/keyrings/docker.asc
     mode: "0644"
 
 - name: Add Docker CE apt repository
   ansible.builtin.apt_repository:
-    repo: "deb [arch={{ ansible_architecture | replace('x86_64', 'amd64') | replace('aarch64', 'arm64') }} signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/{{ ansible_distribution | lower }} {{ ansible_distribution_release }} stable"
+    repo: "deb [arch={{ ansible_facts['architecture'] | replace('x86_64', 'amd64') | replace('aarch64', 'arm64') }} signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/{{ ansible_facts['distribution'] | lower }} {{ ansible_facts['distribution_release'] }} stable"
     filename: docker
     state: present
     update_cache: true
