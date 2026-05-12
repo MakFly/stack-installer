@@ -51,6 +51,30 @@ apt_update_once() {
   fi
 }
 
+remove_ansible_ppa_sources() {
+  local files=()
+  local f
+
+  while IFS= read -r -d '' f; do
+    if grep -qE 'ppa\.launchpad(content)?\.net/(~)?ansible/ansible|ppa:ansible/ansible' "$f" 2>/dev/null; then
+      files+=("$f")
+    fi
+  done < <(find /etc/apt/sources.list.d -maxdepth 1 -type f \( -name '*.list' -o -name '*.sources' \) -print0 2>/dev/null)
+
+  if grep -qE 'ppa\.launchpad(content)?\.net/(~)?ansible/ansible|ppa:ansible/ansible' /etc/apt/sources.list 2>/dev/null; then
+    warn "Ansible PPA entry found in /etc/apt/sources.list; disabling matching lines."
+    cp /etc/apt/sources.list "/etc/apt/sources.list.stack-installer-backup.$(date +%Y%m%d%H%M%S)"
+    sed -i -E '/ppa\.launchpad(content)?\.net\/(~)?ansible\/ansible|ppa:ansible\/ansible/s/^/# disabled by stack-installer: /' /etc/apt/sources.list
+  fi
+
+  if (( ${#files[@]} )); then
+    warn "Removing Ansible PPA apt source(s): ${files[*]}"
+    for f in "${files[@]}"; do
+      rm -f "$f"
+    done
+  fi
+}
+
 ensure_pkg() {
   local pkgs=("$@")
   local missing=()
@@ -67,13 +91,8 @@ ensure_pkg() {
 
 install_ansible_first() {
   log "Installing/updating Ansible first..."
+  remove_ansible_ppa_sources
   ensure_pkg ca-certificates curl git gnupg lsb-release
-  if [[ "$OS_ID" == "ubuntu" ]]; then
-    ensure_pkg software-properties-common
-    if ! grep -rq "ppa.launchpad.net/ansible/ansible" /etc/apt/sources.list /etc/apt/sources.list.d/ 2>/dev/null; then
-      add-apt-repository -y --update ppa:ansible/ansible
-    fi
-  fi
   apt_update_once
   DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends ansible
   log "$(ansible --version | head -n1)"

@@ -25,6 +25,8 @@ wget -qO- https://raw.githubusercontent.com/MakFly/stack-installer/main/install.
 
 The bootstrap installs Ansible first, installs the real local command `/usr/local/bin/stack-installer`, then launches the CLI automatically. When installed through `curl ... | sudo bash`, the menu is attached back to `/dev/tty` so it remains interactive.
 
+On Ubuntu releases where the Ansible PPA is not published yet, the bootstrap uses the distribution package and removes stale `ansible/ansible` PPA source files that would otherwise break `apt update`.
+
 ---
 
 ## What it does
