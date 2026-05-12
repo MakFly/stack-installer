@@ -73,11 +73,25 @@
       ZSH_AUTOSUGGEST_STRATEGY=(history completion)
       ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE='fg=8'
 
+      stack_git_prompt() {
+        if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+          local branch
+          branch="$(git symbolic-ref --short HEAD 2>/dev/null || git rev-parse --short HEAD 2>/dev/null)"
+          if [[ -n "$branch" ]]; then
+            printf ' [git:%s]' "$branch"
+          else
+            printf ' [git]'
+          fi
+        else
+          printf ' [no-git]'
+        fi
+      }
+
       source "$ZSH/oh-my-zsh.sh"
 
       export EDITOR="${EDITOR:-nano}"
       export VISUAL="${VISUAL:-$EDITOR}"
-      PROMPT='%n@%m %F{blue}%/ %f$ '
+      PROMPT='%F{yellow}%*%f %F{blue}%/%f$(stack_git_prompt)$ '
 
       alias ll='ls -lah'
       alias la='ls -A'

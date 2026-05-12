@@ -75,7 +75,11 @@ The interactive panel can install/update everything or only selected components:
 | `zsh` | Installs Zsh + Oh My Zsh and manages `.zshrc` |
 | `zsh_plugins` | Installs/updates autosuggestions and syntax highlighting |
 
-Zsh setup uses the built-in `robbyrussell` theme with a custom compact prompt that always shows the full current path.
+Zsh setup uses the built-in `robbyrussell` theme with a custom compact prompt that shows:
+
+- Current time
+- Full current path
+- Git status (`[git:<branch>]`) when inside a Git repository, `[no-git]` otherwise
 
 Zsh plugins come from the official GitHub repositories:
 
