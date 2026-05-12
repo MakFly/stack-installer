@@ -75,7 +75,7 @@ The interactive panel can install/update everything or only selected components:
 | `zsh` | Installs Zsh + Oh My Zsh and manages `.zshrc` |
 | `zsh_plugins` | Installs/updates autosuggestions and syntax highlighting |
 
-Zsh setup uses `powerlevel10k` as default theme with a full path prompt configuration by default.
+Zsh setup uses the built-in `robbyrussell` theme with a custom compact prompt that always shows the full current path.
 
 Zsh plugins come from the official GitHub repositories:
 
