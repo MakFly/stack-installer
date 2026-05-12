@@ -82,7 +82,7 @@ Zsh setup disables the default OMZ theme and uses a custom compact prompt that s
 - Git segment (`[git:<branch>]`, in color) when inside a Git repository
 
 Examples:
-- `23:12:34 ~/Documents/lab/tools/stack-installer [git:main] $`
+- `23:12:34 * ~/Documents/lab/tools/stack-installer * [git:main] $`
 - `23:12:34 ~ $`
 - In non-git directories, `/home/kev` is displayed as `~`.
 

@@ -77,18 +77,28 @@
 
       stack_prompt() {
         local branch marker time_now cwd
+        local sep
         time_now="$(print -P '%D{%H:%M:%S}')"
         cwd="${PWD/#$HOME/~}"
+        sep="${fg[yellow]}*${reset_color}"
 
         if command -v git >/dev/null 2>&1 && git -C "$PWD" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
           branch="$(git -C "$PWD" symbolic-ref --short HEAD 2>/dev/null || git -C "$PWD" rev-parse --short HEAD 2>/dev/null)"
           branch="${branch:-detached}"
           marker="${fg[magenta]}[git:${branch}]${reset_color}"
-          printf '%s %s %s $ ' "${fg[cyan]}${time_now}${reset_color}" "${fg[blue]}${cwd}${reset_color}" "${marker}"
+          printf '%s %s %s %s %s $ ' \
+            "${fg[cyan]}${time_now}${reset_color}" \
+            "$sep" \
+            "${fg[blue]}${cwd}${reset_color}" \
+            "$sep" \
+            "${marker}"
           return
         fi
 
-        printf '%s %s $ ' "${fg[cyan]}${time_now}${reset_color}" "${fg[blue]}${cwd}${reset_color}"
+        printf '%s %s %s $ ' \
+          "${fg[cyan]}${time_now}${reset_color}" \
+          "$sep" \
+          "${fg[blue]}${cwd}${reset_color}"
       }
 
       source "$ZSH/oh-my-zsh.sh"
