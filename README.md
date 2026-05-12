@@ -25,6 +25,8 @@ wget -qO- https://github.com/MakFly/stack-installer/raw/refs/heads/main/install.
 
 The bootstrap installs Ansible first, installs the real local command `/usr/local/bin/stack-installer`, then launches the CLI automatically. When installed through `curl ... | sudo bash`, the menu is attached back to `/dev/tty` so it remains interactive.
 
+The bootstrap is idempotent: it always update-or-creates `/opt/stack-installer` (existing install is refreshed, non-git directories are safely replaced), so rerunning it is safe.
+
 On Ubuntu releases where the Ansible PPA is not published yet, the bootstrap uses the distribution package and removes stale `ansible/ansible` PPA source files that would otherwise break `apt update`.
 
 ---
@@ -36,7 +38,7 @@ On Ubuntu releases where the Ansible PPA is not published yet, the bootstrap use
 1. Detect Debian/Ubuntu.
 2. Install bootstrap dependencies.
 3. Install Ansible first.
-4. Install this project into `/opt/stack-installer`.
+4. Update-or-create this project into `/opt/stack-installer`.
 5. Install the local CLI at `/usr/local/bin/stack-installer`.
 6. Launch the CLI.
 
@@ -209,6 +211,7 @@ docker run --rm -v "$PWD:/mnt" koalaman/shellcheck:stable /mnt/install.sh /mnt/b
 
 `git pull` in any other clone (for example `~/Documents/.../stack-installer`) does not automatically update the active installer copy.  
 The CLI uses `/opt/stack-installer` by default (copied by `install.sh` as root), so keep that path updated too when testing changes.
+Running `curl ... | sudo bash` now performs an update-or-create on `/opt/stack-installer` automatically.
 
 To apply local file changes without waiting for another full bootstrap, from this repo run:
 

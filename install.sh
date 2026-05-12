@@ -157,15 +157,24 @@ sync_project() {
   local -a git_cmd
   script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd -P)"
 
+  if [[ -e "$install_dir" && ! -d "$install_dir" ]]; then
+    warn "${install_dir} exists and is not a directory; replacing it."
+    rm -f "$install_dir"
+  fi
+  mkdir -p "$install_dir"
+
   if [[ -f "${script_dir}/ansible/site.yml" && -f "${script_dir}/bin/stack-installer" ]]; then
-    log "Installing project from local checkout..."
-    install -d -m 0755 "$install_dir"
+    log "UpdateOrCreate local project snapshot in ${install_dir}..."
+    # Keep the active install deterministic when running from a local source tree.
+    # Remove stale metadata from previous git-backed installs to avoid mixed states.
+    rm -rf "${install_dir}/.git"
+    rm -rf "${install_dir}/.gitignore"
     rsync -a --delete \
       --exclude '.git' \
       --exclude '.gitignore' \
       "${script_dir}/" "$install_dir/"
   else
-    log "Installing project from ${repo_url} (${ref})..."
+    log "UpdateOrCreate project in ${install_dir} from ${repo_url} (${ref})..."
     if [[ -d "${install_dir}/.git" ]]; then
       git_cmd=(git -c "safe.directory=${install_dir}" -C "$install_dir")
       # Refresh project repo and discard local drift to avoid interactive merge conflicts.
