@@ -79,10 +79,10 @@ Zsh setup uses the built-in `robbyrussell` theme with a custom compact prompt th
 
 - Current time
 - Full current path
-- Git segment (`[git:<branch>]`, in color) when inside a Git repository, nothing extra when not
+- Git segment (`[git:<branch>]`, in color) when inside a Git repository
 
 Examples:
-- `[git:main] 23:12:34 /home/kev/Documents/lab/tools/stack-installer $`
+- `23:12:34 ~/Documents/lab/tools/stack-installer [git:main] $`
 - `23:12:34 ~ $`
 - In non-git directories, `/home/kev` is displayed as `~`.
 

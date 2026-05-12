@@ -77,14 +77,14 @@
 
       stack_prompt() {
         local branch marker time_now path
-        time_now="$(strftime "%H:%M:%S")"
+        time_now="$(print -P '%D{%H:%M:%S}')"
         path="${PWD/#$HOME/~}"
 
-        if (( ${+commands[git]} )) && git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-          branch="$(git symbolic-ref --short HEAD 2>/dev/null || git rev-parse --short HEAD 2>/dev/null)"
+        if command -v git >/dev/null 2>&1 && git -C "$PWD" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+          branch="$(git -C "$PWD" symbolic-ref --short HEAD 2>/dev/null || git -C "$PWD" rev-parse --short HEAD 2>/dev/null)"
           branch="${branch:-detached}"
           marker="${fg[magenta]}[git:${branch}]${reset_color}"
-          printf '%s %s %s $ ' "$marker" "${fg[cyan]}${time_now}${reset_color}" "${fg[blue]}${path}${reset_color}"
+          printf '%s %s %s $ ' "${fg[cyan]}${time_now}${reset_color}" "${fg[blue]}${path}${reset_color}" "${marker}"
           return
         fi
 
