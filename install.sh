@@ -99,6 +99,30 @@ remove_conflicting_docker_sources() {
   fi
 }
 
+remove_php_ppa_sources() {
+  local files=()
+  local f
+
+  while IFS= read -r -d '' f; do
+    if grep -qE 'ppa\.launchpad(content)?\.net/(~)?ondrej/php|ppa:ondrej/php' "$f" 2>/dev/null; then
+      files+=("$f")
+    fi
+  done < <(find /etc/apt/sources.list.d -maxdepth 1 -type f \( -name '*.list' -o -name '*.sources' \) -print0 2>/dev/null)
+
+  if grep -qE 'ppa\.launchpad(content)?\.net/(~)?ondrej/php|ppa:ondrej/php' /etc/apt/sources.list 2>/dev/null; then
+    warn "ondrej/php PPA entry found in /etc/apt/sources.list; disabling matching lines."
+    cp /etc/apt/sources.list "/etc/apt/sources.list.stack-installer-backup.$(date +%Y%m%d%H%M%S)"
+    sed -i -E '/ppa\.launchpad(content)?\.net\/(~)?ondrej\/php|ppa:ondrej\/php/s/^/# disabled by stack-installer: /' /etc/apt/sources.list
+  fi
+
+  if (( ${#files[@]} )); then
+    warn "Removing ondrej/php PPA apt source(s): ${files[*]}"
+    for f in "${files[@]}"; do
+      rm -f "$f"
+    done
+  fi
+}
+
 ensure_pkg() {
   local pkgs=("$@")
   local missing=()
@@ -159,6 +183,7 @@ main() {
   require_root
   detect_os
   remove_conflicting_docker_sources
+  remove_php_ppa_sources
   install_ansible_first
   ensure_pkg rsync
   sync_project

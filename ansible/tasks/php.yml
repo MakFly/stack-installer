@@ -1,4 +1,25 @@
 ---
+- name: Find existing ondrej/php PPA source files
+  ansible.builtin.shell: |
+    grep -rlE 'ppa\.launchpad(content)?\.net/(~)?ondrej/php|ppa:ondrej/php' /etc/apt/sources.list.d /etc/apt/sources.list 2>/dev/null || true
+  args:
+    executable: /bin/bash
+  register: php_ppa_source_files
+  changed_when: false
+
+- name: Remove ondrej/php PPA source files from sources.list.d
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop: "{{ php_ppa_source_files.stdout_lines | select('match', '^/etc/apt/sources\\.list\\.d/') | list }}"
+
+- name: Disable ondrej/php entries in /etc/apt/sources.list
+  ansible.builtin.replace:
+    path: /etc/apt/sources.list
+    regexp: '^(.*(ppa\.launchpad(content)?\.net/(~)?ondrej/php|ppa:ondrej/php).*)$'
+    replace: '# disabled by stack-installer: \1'
+  when: "'/etc/apt/sources.list' in php_ppa_source_files.stdout_lines"
+
 - name: Install PHP repository dependencies
   ansible.builtin.apt:
     name:
@@ -21,28 +42,15 @@
     url: https://packages.sury.org/php/apt.gpg
     dest: /etc/apt/keyrings/sury-php.asc
     mode: "0644"
-  when: ansible_distribution == "Debian"
+  when: ansible_facts['distribution'] == "Debian"
 
 - name: Add Sury PHP repository on Debian
   ansible.builtin.apt_repository:
-    repo: "deb [signed-by=/etc/apt/keyrings/sury-php.asc] https://packages.sury.org/php/ {{ ansible_distribution_release }} main"
+    repo: "deb [signed-by=/etc/apt/keyrings/sury-php.asc] https://packages.sury.org/php/ {{ ansible_facts['distribution_release'] }} main"
     filename: sury-php
     state: present
     update_cache: true
-  when: ansible_distribution == "Debian"
-
-- name: Install software-properties-common on Ubuntu
-  ansible.builtin.apt:
-    name: software-properties-common
-    state: present
-  when: ansible_distribution == "Ubuntu"
-
-- name: Add ondrej/php PPA on Ubuntu
-  ansible.builtin.apt_repository:
-    repo: ppa:ondrej/php
-    state: present
-    update_cache: true
-  when: ansible_distribution == "Ubuntu"
+  when: ansible_facts['distribution'] == "Debian"
 
 - name: Detect latest packaged PHP 8.x
   ansible.builtin.shell: |

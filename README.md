@@ -84,6 +84,8 @@ Zsh plugins come from the official GitHub repositories:
 
 Apache2 and Nginx are never installed. If they already exist, the playbook stops/disables them unless `KEEP_WEBSERVERS=1` is set.
 
+On Ubuntu, PHP is installed from the distribution repositories to avoid release-specific PPA failures. On Debian, the Sury PHP repository is used.
+
 ---
 
 ## Node.js LTS Policy
