@@ -21,8 +21,8 @@
     path: "{{ target_home }}/.zshrc"
   register: zshrc_stat
 
-- name: Check whether zshrc is managed
-  ansible.builtin.command: grep -qxF '# Managed by stack-installer' "{{ target_home }}/.zshrc"
+- name: Check whether zshrc is managed with current schema
+  ansible.builtin.command: grep -qxF '# Managed by stack-installer v3' "{{ target_home }}/.zshrc"
   register: zshrc_managed
   changed_when: false
   failed_when: false
@@ -44,7 +44,7 @@
     mode: "0644"
     content: |
       {% raw %}
-      # Managed by stack-installer
+      # Managed by stack-installer v3
       export ZSH="$HOME/.oh-my-zsh"
       ZSH_THEME=""
       autoload -Uz colors

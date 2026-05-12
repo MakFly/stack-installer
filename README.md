@@ -176,7 +176,7 @@ curl -fsSL https://github.com/MakFly/stack-installer/raw/refs/heads/main/install
 - The CLI is relaunchable for full updates or selective updates.
 - Component tasks are idempotent.
 - PHP is installed without Apache2/Nginx packages.
-- Existing unmanaged `~/.zshrc` is backed up before writing the managed Zsh config.
+- Existing `~/.zshrc` is replaced when it does not match the managed schema (previous versions are backed up before overwrite), so prompt updates are applied automatically on reinstall/update.
 - Docker group changes and default-shell changes require a new login shell or SSH reconnect.
 
 ---
