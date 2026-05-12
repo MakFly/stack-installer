@@ -81,6 +81,10 @@ Zsh setup uses the built-in `robbyrussell` theme with a custom compact prompt th
 - Full current path
 - Git segment (`[git:<branch>]`, in color) when inside a Git repository, `[no-git]` when not
 
+Examples:
+- `[git:main] 23:12:34 /home/kev/Documents/lab/tools/stack-installer $`
+- `23:12:34 /home/kev [no-git] $`
+
 Zsh plugins come from the official GitHub repositories:
 
 - <https://github.com/zsh-users/zsh-autosuggestions>
