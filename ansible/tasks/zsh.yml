@@ -75,33 +75,33 @@
       ZSH_AUTOSUGGEST_STRATEGY=(history completion)
       ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE='fg=8'
 
-      stack_git_prompt() {
+      stack_prompt() {
+        local git_marker time_now cwd branch suffix
         if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-          local branch
           branch="$(git symbolic-ref --short HEAD 2>/dev/null || git rev-parse --short HEAD 2>/dev/null)"
           if [[ -n "$branch" ]]; then
-            printf '%s' "${fg[magenta]}[git:${branch}]${reset_color} / "
+            git_marker="${fg[magenta]}[git:${branch}]${reset_color}"
           else
-            printf '%s' "${fg[magenta]}[git]${reset_color} / "
+            git_marker="${fg[magenta]}[git]${reset_color}"
           fi
+          suffix=""
         else
-          return 1
+          git_marker=""
+          suffix="${fg[yellow]} [no-git]${reset_color}"
         fi
-      }
-
-      stack_no_git_marker() {
-        if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-          printf ' / [no-git]'
-        fi
+        time_now="$(date +%H:%M:%S)"
+        cwd="$(pwd)"
+        printf '%s / %s / %s%s $ ' "$git_marker" "$time_now" "$cwd" "$suffix"
       }
 
       source "$ZSH/oh-my-zsh.sh"
 
       setopt NO_BEEP
+      setopt PROMPT_SUBST
 
       export EDITOR="${EDITOR:-nano}"
       export VISUAL="${VISUAL:-$EDITOR}"
-      PROMPT='$(stack_git_prompt)%F{yellow}%*%f %F{blue}%/%f$(stack_no_git_marker)%f$ '
+      PROMPT='$(stack_prompt)'
 
       alias ll='ls -lah'
       alias la='ls -A'
