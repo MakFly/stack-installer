@@ -35,6 +35,10 @@
       ansible.builtin.import_tasks: tasks/composer.yml
       when: "'composer' in selected_list"
 
+    - name: Install Symfony CLI
+      ansible.builtin.import_tasks: tasks/symfony_cli.yml
+      when: "'symfony_cli' in selected_list"
+
     - name: Install Node.js LTS and bundled npm
       ansible.builtin.import_tasks: tasks/nodejs.yml
       when: "'nodejs' in selected_list"

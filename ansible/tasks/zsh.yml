@@ -106,7 +106,7 @@
       export EDITOR="${EDITOR:-nano}"
       export VISUAL="${VISUAL:-$EDITOR}"
       export PATH="$HOME/.local/bin:$PATH"
-      PROMPT='%F{cyan}%D{%H:%M:%S}%f %F{yellow}*%f %F{blue}%~%f${STACK_GIT_PROMPT} $ '
+      PROMPT=$'%F{cyan}%D{%H:%M:%S}%f %F{yellow}*%f %F{blue}%~%f${STACK_GIT_PROMPT}\n%F{green}|->%f '
 
       alias ll='ls -lah'
       alias la='ls -A'

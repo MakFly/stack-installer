@@ -100,6 +100,7 @@
     - "php{{ stack_php_version }}-readline"
     - "php{{ stack_php_version }}-gd"
     - "php{{ stack_php_version }}-gmp"
+    - "php{{ stack_php_version }}-sqlite3"
   register: php_extension_install
   failed_when: false
 
@@ -107,4 +108,10 @@
   ansible.builtin.command: "phpenmod -v {{ stack_php_version }} gmp"
   register: php_enmod_gmp
   changed_when: "'already enabled' not in php_enmod_gmp.stderr and 'already enabled' not in php_enmod_gmp.stdout"
+  failed_when: false
+
+- name: Enable PHP sqlite3 extension
+  ansible.builtin.command: "phpenmod -v {{ stack_php_version }} sqlite3"
+  register: php_enmod_sqlite3
+  changed_when: "'already enabled' not in php_enmod_sqlite3.stderr and 'already enabled' not in php_enmod_sqlite3.stdout"
   failed_when: false

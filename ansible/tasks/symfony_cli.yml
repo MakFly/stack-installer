@@ -1,0 +1,62 @@
+---
+- name: Check Symfony CLI
+  ansible.builtin.command: symfony version --no-ansi
+  register: symfony_cli_check
+  changed_when: false
+  failed_when: false
+
+- name: Ensure apt prerequisites for Symfony CLI repository
+  ansible.builtin.apt:
+    name:
+      - apt-transport-https
+      - ca-certificates
+      - curl
+      - gnupg
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+  when: symfony_cli_check.rc != 0
+
+- name: Ensure apt keyrings directory exists
+  ansible.builtin.file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: "0755"
+  when: symfony_cli_check.rc != 0
+
+- name: Add Symfony CLI Cloudsmith GPG key
+  ansible.builtin.get_url:
+    url: https://dl.cloudsmith.io/public/symfony/stable/gpg.A2D1DABDA4FF950E.key
+    dest: /etc/apt/keyrings/symfony-cli.asc
+    mode: "0644"
+    force: false
+  when: symfony_cli_check.rc != 0
+
+- name: Add Symfony CLI Cloudsmith apt repository
+  ansible.builtin.copy:
+    dest: /etc/apt/sources.list.d/symfony-cli.list
+    mode: "0644"
+    content: |
+      deb [signed-by=/etc/apt/keyrings/symfony-cli.asc] https://dl.cloudsmith.io/public/symfony/stable/deb/debian any-version main
+      deb-src [signed-by=/etc/apt/keyrings/symfony-cli.asc] https://dl.cloudsmith.io/public/symfony/stable/deb/debian any-version main
+  when: symfony_cli_check.rc != 0
+  register: symfony_cli_repo
+
+- name: Refresh apt cache after adding Symfony CLI repository
+  ansible.builtin.apt:
+    update_cache: true
+  when: symfony_cli_check.rc != 0 and symfony_cli_repo.changed
+
+- name: Install Symfony CLI
+  ansible.builtin.apt:
+    name: symfony-cli
+    state: present
+  when: symfony_cli_check.rc != 0
+
+- name: Update Symfony CLI
+  ansible.builtin.apt:
+    name: symfony-cli
+    state: latest
+    update_cache: true
+    cache_valid_time: 3600
+  when: symfony_cli_check.rc == 0
