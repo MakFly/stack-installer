@@ -5,11 +5,11 @@
 # and then execute the local `stack-installer` CLI that drives component installation.
 #
 # Usage:
-#   curl -fsSL https://github.com/MakFly/stack-installer/raw/refs/heads/main/install.sh | sudo bash
-#   wget -qO- https://github.com/MakFly/stack-installer/raw/refs/heads/main/install.sh | sudo bash
+#   curl -fsSL https://github.com/dev-toolings/stack-installer/raw/refs/heads/main/install.sh | sudo bash
+#   wget -qO- https://github.com/dev-toolings/stack-installer/raw/refs/heads/main/install.sh | sudo bash
 #
 # Env overrides:
-#   STACK_INSTALLER_REPO=https://github.com/MakFly/stack-installer.git
+#   STACK_INSTALLER_REPO=https://github.com/dev-toolings/stack-installer.git
 #   STACK_INSTALLER_REF=main
 #   STACK_INSTALLER_DIR=/opt/stack-installer
 #   STACK_INSTALLER_NO_RUN=1  # install the CLI without launching it
@@ -151,7 +151,7 @@ install_ansible_first() {
 
 sync_project() {
   local install_dir="${STACK_INSTALLER_DIR:-/opt/stack-installer}"
-  local repo_url="${STACK_INSTALLER_REPO:-https://github.com/MakFly/stack-installer.git}"
+  local repo_url="${STACK_INSTALLER_REPO:-https://github.com/dev-toolings/stack-installer.git}"
   local ref="${STACK_INSTALLER_REF:-main}"
   local script_dir
   local -a git_cmd

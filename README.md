@@ -14,13 +14,13 @@
 ## Quick install
 
 ```bash
-curl -fsSL https://github.com/MakFly/stack-installer/raw/refs/heads/main/install.sh | sudo bash
+curl -fsSL https://github.com/dev-toolings/stack-installer/raw/refs/heads/main/install.sh | sudo bash
 ```
 
 or with `wget`:
 
 ```bash
-wget -qO- https://github.com/MakFly/stack-installer/raw/refs/heads/main/install.sh | sudo bash
+wget -qO- https://github.com/dev-toolings/stack-installer/raw/refs/heads/main/install.sh | sudo bash
 ```
 
 The bootstrap installs Ansible first, installs the real local command `/usr/local/bin/stack-installer`, then launches the CLI automatically. When installed through `curl ... | sudo bash`, the menu is attached back to `/dev/tty` so it remains interactive.
@@ -155,7 +155,7 @@ sudo stack-installer --status
 Bootstrap without launching the CLI:
 
 ```bash
-curl -fsSL https://github.com/MakFly/stack-installer/raw/refs/heads/main/install.sh \
+curl -fsSL https://github.com/dev-toolings/stack-installer/raw/refs/heads/main/install.sh \
   | sudo STACK_INSTALLER_NO_RUN=1 bash
 ```
 
@@ -165,7 +165,7 @@ curl -fsSL https://github.com/MakFly/stack-installer/raw/refs/heads/main/install
 
 | Variable | Default | Effect |
 | --- | --- | --- |
-| `STACK_INSTALLER_REPO` | `https://github.com/MakFly/stack-installer.git` | Git repo cloned by the bootstrap |
+| `STACK_INSTALLER_REPO` | `https://github.com/dev-toolings/stack-installer.git` | Git repo cloned by the bootstrap |
 | `STACK_INSTALLER_REF` | `main` | Branch/tag cloned by the bootstrap |
 | `STACK_INSTALLER_DIR` | `/opt/stack-installer` | Local project install directory |
 | `STACK_INSTALLER_NO_RUN` | unset | Install the CLI without launching it |
